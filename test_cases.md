@@ -10,11 +10,13 @@ This document outlines comprehensive test cases to ensure class importation, pro
 ### When Importing Classes from Another Project:
 
 **For Existing Projects:**
+- **"Import classes only" (classes_only) is ENABLED** - You can add class definitions without copying training images
 - If a class name **conflicts** (same name exists), the system shows a conflict resolution dialog with options:
   - **Skip**: Don't import this class (existing class remains unchanged)
   - **Merge**: Add training images from imported class to existing class (existing class definition is preserved, images are merged)
 - If a class name **doesn't conflict**, it's added as a new class
 - **Classes are NOT automatically overridden** - conflicts must be explicitly resolved
+- You can switch between import types (classes_only, with_images, with_model) - buttons remain enabled
 
 **For New Projects:**
 - All classes are imported without conflicts (no existing classes to conflict with)
@@ -39,16 +41,18 @@ This document outlines comprehensive test cases to ensure class importation, pro
 
 **Expected Results:**
 - PROJ_A now has: ["Copepod", "Diatom", "Dinoflagellate", "Cyanobacteria"]
-- No training images copied
+- **NO training images copied** (this is classes_only import)
 - Class definitions (name, formatted_name, description) imported
-- If imported classes have >10 training images in source, new model will be trained
+- **NO model training triggered** (no training images imported)
+- Project status unchanged (unless user manually adds >=10 training images later)
 - **Classified images in PROJ_A remain unchanged**
 - No conflicts shown
 
 **Verification:**
-- Check `class_details` table for PROJ_A
+- Check `class_details` table for PROJ_A - new classes present
 - Check `image_data` table - all existing classifications remain intact
-- Verify no training images in `/training_data/PROJ_A/` for new classes
+- Verify NO training images in `/training_data/PROJ_A/` for new classes (Dinoflagellate, Cyanobacteria)
+- Verify NO model training triggered
 
 ---
 
@@ -94,15 +98,18 @@ This document outlines comprehensive test cases to ensure class importation, pro
 
 **Expected Results:**
 - PROJ_A's "Copepod" class keeps its original definition (name, formatted_name, description)
-- Training images from PROJ_B are added to PROJ_A's Copepod (total: 80 images, up to MAX_IMAGES limit)
+- **NO training images are copied from PROJ_B** (this is classes_only import)
+- PROJ_A's Copepod still has 50 training images (unchanged)
 - **All 1000 classified images remain linked to "Copepod"**
-- New model will be trained (class modified with new images)
+- **No model training triggered** (no changes to training images)
+- Project status remains unchanged (unless classes have >=10 images from manual additions)
 
 **Verification:**
 - Check `class_details` - PROJ_A's Copepod definition unchanged
-- Check training images count increased
+- Check training images count - still 50 (NOT increased to 80)
 - Check `image_data` - all 1000 images still classified as "Copepod"
-- Verify model training triggered
+- Verify NO model training triggered (no image changes)
+- Check `/training_data/PROJ_A/Copepod/` - no new images from PROJ_B
 
 ---
 
@@ -198,22 +205,24 @@ This document outlines comprehensive test cases to ensure class importation, pro
 
 **Steps:**
 1. Open PROJ_A for editing
-2. Click "Import classes and training images"
+2. Click "Import classes and training images" (or "Import classes from other project" for classes_only)
 3. Select PROJ_B
-4. Uncheck "Copepod" (skip conflict)
+4. Uncheck "Copepod" (skip conflict if using with_images, or just don't select it)
 5. Check "Diatom" and "Dinoflagellate"
 6. Submit
 
 **Expected Results:**
 - Only "Diatom" and "Dinoflagellate" imported
-- "Copepod" not imported (skipped)
-- Training images copied only for selected classes
+- "Copepod" not imported (skipped/unchecked)
+- **If using with_images:** Training images copied only for selected classes (Diatom, Dinoflagellate)
+- **If using classes_only:** NO training images copied
 - **Existing "Copepod" class in PROJ_A unchanged**
 - **All classified images for "Copepod" remain intact**
 
 **Verification:**
 - Check `class_details` - PROJ_A has: ["Copepod" (original), "Diatom", "Dinoflagellate"]
-- Check training images - only for Diatom and Dinoflagellate
+- **If using with_images:** Check training images - only for Diatom and Dinoflagellate
+- **If using classes_only:** Check training images - NONE copied
 - Check `image_data` - Copepod classifications unchanged
 
 ---
@@ -405,7 +414,7 @@ This document outlines comprehensive test cases to ensure class importation, pro
 #### TC-NEW-001: Create New Project - Import Classes Only
 **Setup:**
 - New project "PROJ_NEW" (no existing classes)
-- Source project "PROJ_B" with classes: ["Copepod", "Diatom", "Dinoflagellate"]
+- Source project "PROJ_B" with classes: ["Copepod", "Diatom", "Dinoflagellate"] (each with >10 training images)
 
 **Steps:**
 1. Create new project PROJ_NEW
@@ -416,15 +425,17 @@ This document outlines comprehensive test cases to ensure class importation, pro
 
 **Expected Results:**
 - All classes imported: ["Copepod", "Diatom", "Dinoflagellate"]
-- No training images copied
-- Class definitions imported
-- If classes have >10 training images in source, new model will be trained
-- Project status set to -1 (hidden) or 0 (needs training)
+- **NO training images copied** (this is classes_only import)
+- Class definitions (name, formatted_name, description) imported
+- **NO model training triggered** (no training images imported)
+- Project status set to -1 (hidden) or current status (no training images means no model can be trained yet)
+- User must manually add training images (>=10 per class) before model can be trained
 
 **Verification:**
-- Check `class_details` - all classes present
-- Check training images - none copied
-- Check project status
+- Check `class_details` - all classes present with definitions
+- Check training images - **NONE copied** (verify `/training_data/PROJ_NEW/` is empty or only has manually added images)
+- Check project status - should be -1 or unchanged
+- Verify NO model training triggered
 
 ---
 
